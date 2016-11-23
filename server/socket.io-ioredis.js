@@ -34,7 +34,7 @@ function adapter(opts){
   // init clients if needed
   function createClient(redis_opts) {
     //scaleReads: Config where to send the read queries. Available values are "master", "slave" and "all".
-    return new Redis.Cluster(config.redis.startupNodes, redis_opts);
+    return new Redis.Cluster(config.redis.startupNodes);
   }
 
   if (!pub) pub = createClient();

@@ -1,3 +1,4 @@
+"use strict";
 const config = require ('./config.json');
 const winston = require('winston');
 const http = require('http');
@@ -21,7 +22,7 @@ httpServer.listen(config.port, () => {
 });
 
 const io = new SocketServer(httpServer);
-io.adapter(RedisAdapter());
+io.adapter(new RedisAdapter());
 
 app.get('/', function (req, res) {
   res.sendfile(__dirname + '/index.html');
@@ -30,9 +31,33 @@ app.get('/', function (req, res) {
 io.on('connection', (socket) => {
   const {userId} = socket.handshake.query;
 
-  logger.info(`One client ${userId} has connected to server (${socket.id}).`);
+  let messageReceived=0;
 
-  socket.on('message', function (socket) {
-    socket.broadcast.emit('user connected');
+  logger.info(`Client ${userId} has connected to server (${socket.id}).`);
+
+  socket.on('joinRoom', (message, callback) => {
+    try{
+      socket.join(message.roomId);
+      logger.info(`Client ${userId} has joined room (${message.roomId}).`);
+    } catch(err){
+      typeof callback === 'function' && callback(err);
+    }
+
+    typeof callback === 'function' && callback(null, messageReceived);
+  });
+
+  socket.on('message', (message, callback) => {
+    try{
+      messageReceived = messageReceived + 1;
+      socket.to(message.roomId).emit("message", message.content);
+    }catch(err){
+      typeof callback === 'function' && callback(err);
+    }
+
+    typeof callback === 'function' && callback(null, messageReceived);
+  });
+
+  socket.on('disconnect', () => {
+    logger.info(`One client ${userId} has disconnected from server (${socket.id}).`);
   });
 });
